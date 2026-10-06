@@ -1,0 +1,7 @@
+# このファイルに追加したい動画のURLまたは動画IDを1行ずつ記述してください。
+# 行頭に # を付けるとコメント（無視）になります。
+#
+# 例:
+# https://www.youtube.com/watch?v=dQw4w9WgXcQ
+# https://youtu.be/dQw4w9WgXcQ
+# dQw4w9WgXcQ

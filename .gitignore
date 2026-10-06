@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+
+# 認証情報・シークレット（絶対に公開しないこと）
+client_secret*.json
+token.json
+.env*
+*.env
+
+# 個人データ・限定公開再生リストのURL
+playlists_history.json
+PLAYLISTS.md
+
+# ログや生成データ
+*.log
+
