@@ -1,3 +1,8 @@
+﻿param(
+    [string]$ProjectId = "",
+    [switch]$NonInteractive
+)
+
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $Host.UI.RawUI.WindowTitle = "Cloud Run Jobs 自動デプロイツール"
 
@@ -13,7 +18,7 @@ Set-Location $ScriptDir
 $TokenPath = Join-Path $ScriptDir "token.json"
 if (-not (Test-Path $TokenPath)) {
     Write-Host "[エラー] token.json が見つかりません。先にローカルで一度認証を完了させてください。" -ForegroundColor Red
-    Read-Host "Enterキーを押して終了..."
+    if (-not $NonInteractive) { Read-Host "Enterキーを押して終了..." }
     exit 1
 }
 
@@ -29,17 +34,23 @@ if (Test-Path $ClientSecretPath) {
     } catch {}
 }
 
-Write-Host "対象の Google Cloud プロジェクトID を確認します。" -ForegroundColor Yellow
-if ($DefaultProject) {
-    Write-Host "client_secret.json から検出されたプロジェクト: $DefaultProject"
-    $InputProject = Read-Host "プロジェクトID [Enterで '$DefaultProject' を使用]"
-    if (-not $InputProject) {
-        $ProjectId = $DefaultProject
+if (-not $ProjectId) {
+    Write-Host "対象の Google Cloud プロジェクトID を確認します。" -ForegroundColor Yellow
+    if ($DefaultProject) {
+        Write-Host "client_secret.json から検出されたプロジェクト: $DefaultProject"
+        if ($NonInteractive) {
+            $ProjectId = $DefaultProject
+        } else {
+            $InputProject = Read-Host "プロジェクトID [Enterで '$DefaultProject' を使用]"
+            if (-not $InputProject) {
+                $ProjectId = $DefaultProject
+            } else {
+                $ProjectId = $InputProject.Trim()
+            }
+        }
     } else {
-        $ProjectId = $InputProject.Trim()
+        $ProjectId = Read-Host "Google Cloud プロジェクトIDを入力してください"
     }
-} else {
-    $ProjectId = Read-Host "Google Cloud プロジェクトIDを入力してください"
 }
 
 if (-not $ProjectId) {
@@ -86,16 +97,9 @@ Write-Host "[4/5] Cloud Run Job をデプロイ中..." -ForegroundColor Cyan
 
 # 一時的な環境変数ファイルを作成して安全に渡す
 $EnvFile = Join-Path $ScriptDir ".env.yaml"
-@"
-YOUTUBE_TOKEN_JSON: '$TokenCompact'
-"@ | Set-Content -Path $EnvFile -Encoding UTF8
+"YOUTUBE_TOKEN_JSON: '$TokenCompact'" | Set-Content -Path $EnvFile -Encoding UTF8
 
-gcloud run jobs deploy $JobName `
-    --image $ImageName `
-    --region $Region `
-    --env-vars-file $EnvFile `
-    --max-retries 1 `
-    --task-timeout 10m
+gcloud run jobs deploy $JobName --image $ImageName --region $Region --env-vars-file $EnvFile --max-retries 1 --task-timeout 10m
 
 # 一時ファイルを削除
 Remove-Item $EnvFile -Force -ErrorAction SilentlyContinue
@@ -117,13 +121,8 @@ $ProjectNumber = (gcloud projects describe $ProjectId --format="value(projectNum
 $ServiceAccount = "$ProjectNumber-compute@developer.gserviceaccount.com"
 
 # 実行トリガー用スケジューラ作成
-gcloud scheduler jobs create http $SchedulerName `
-    --location $Region `
-    --schedule "0 23 * * *" `
-    --time-zone "Asia/Tokyo" `
-    --uri "https://$Region-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/$ProjectId/jobs/$JobName:run" `
-    --http-method POST `
-    --oauth-service-account-email $ServiceAccount
+$SchedulerUri = "https://$Region-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/$ProjectId/jobs/$JobName:run"
+gcloud scheduler jobs create http $SchedulerName --location $Region --schedule "0 23 * * *" --time-zone "Asia/Tokyo" --uri $SchedulerUri --http-method POST --oauth-service-account-email $ServiceAccount
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Green
@@ -137,4 +136,6 @@ Write-Host ""
 Write-Host "今すぐテスト実行したい場合は以下のコマンドで実行できます:" -ForegroundColor Yellow
 Write-Host "  gcloud run jobs execute $JobName --region $Region"
 Write-Host ""
-Read-Host "Enterキーを押して終了..."
+if (-not $NonInteractive) {
+    Read-Host "Enterキーを押して終了..."
+}
