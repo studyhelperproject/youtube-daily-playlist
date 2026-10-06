@@ -123,12 +123,12 @@ class YouTubeManager:
             print("[認証] ブラウザが開きます。YouTubeチャンネルを管理するGoogleアカウントでログイン・承認してください...")
             print("※『このアプリは Google で確認されていません』と表示された場合は、")
             print("  『詳細』をクリックして『安全ではないページに移動（続行）』を選択してください。")
-            print("========================================================\n")
-            creds = flow.run_local_server(port=0)
+            print("========================================================\n", flush=True)
+            creds = flow.run_local_server(port=0, prompt="consent", access_type="offline")
 
             with open(self.token_path, "w", encoding="utf-8") as token_file:
                 token_file.write(creds.to_json())
-            print(f"[認証完了] 新しいトークンを '{self.token_path}' に保存しました。")
+            print(f"[認証完了] 新しいトークンを '{self.token_path}' に保存しました。", flush=True)
 
         self.youtube = build("youtube", "v3", credentials=creds)
         return self.youtube
